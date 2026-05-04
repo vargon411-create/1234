@@ -1,110 +1,127 @@
 import tkinter as tk
-from tkinter import messagebox
-import random
+from tkinter import messagebox, ttk
 import json
 import os
 
-# Список предопределённых цитат
-quotes = [
-    {"text": "Жизнь — это то, что происходит, пока вы заняты другими планами.", "author": "Джон Леннон", "theme": "Жизнь"},
-    {"text": "Будьте реалистами, требуйте невозможного!", "author": "Че Гевара", "theme": "Вдохновение"},
-    {"text": "Счастье — это не цель, а способ путешествия.", "author": "Артур Эш", "theme": "Счастье"},
-    {"text": "Изменения — это закон жизни. И те, кто смотрит только в прошлое или настоящее, наверняка упустят будущее.", "author": "Джон Кеннеди", "theme": "Изменения"},
-    {"text": "Успех — это не случайность, это труд, упорство, обучение, жертвы и, главное, любовь к тому, что вы делаете или изучаете.", "author": "Пеле", "theme": "Успех"},
-]
-
-# Функция загрузки истории из файла
-def load_history():
-    if os.path.exists("quote_history.json"):
-        with open("quote_history.json", "r") as file:
+# Функция для загрузки данных из файла
+def load_movies():
+    if os.path.exists("movies.json"):
+        with open("movies.json", "r") as file:
             return json.load(file)
     return []
 
-# Функция сохранения истории в файл
-def save_history():
-    with open("quote_history.json", "w") as file:
-        json.dump(history, file)
+# Функция для сохранения данных в файл
+def save_movies():
+    with open("movies.json", "w") as file:
+        json.dump(movies, file)
 
-# Функция для генерации случайной цитаты
-def generate_quote():
-    quote = random.choice(quotes)
-    history.append(quote)
-    update_quote_display(quote)
-    update_history_list()
+# Функция для добавления фильма
+def add_movie():
+    title = title_entry.get().strip()
+    genre = genre_entry.get().strip()
+    year = year_entry.get().strip()
+    rating = rating_entry.get().strip()
 
-# Функция для отображения цитаты
-def update_quote_display(quote):
-    quote_display.config(text=f"{quote['text']}\n\n- {quote['author']}")
-
-# Функция для обновления списка истории
-def update_history_list():
-    history_list.delete(0, tk.END)
-    for quote in history:
-        history_list.insert(tk.END, f"{quote['text']} - {quote['author']}")
-
-# Функция для фильтрации
-def filter_history():
-    author = author_entry.get().strip()
-    theme = theme_entry.get().strip()
-    filtered = []
-
-    for quote in history:
-        if (author in quote['author']) and (theme in quote['theme']):
-            filtered.append(quote)
-
-    display_filtered_history(filtered)
-
-# Функция для отображения отфильтрованной истории
-def display_filtered_history(filtered):
-    history_list.delete(0, tk.END)
-    for quote in filtered:
-        history_list.insert(tk.END, f"{quote['text']} - {quote['author']}")
-
-# Проверка корректности входа
-def add_quote(author, text, theme):
-    if not author or not text or not theme:
-        messagebox.showwarning("Ошибка", "Поля не могут быть пустыми.")
+    if not title or not genre or not year or not rating:
+        messagebox.showwarning("Ошибка", "Все поля должны быть заполнены.")
         return
 
-    new_quote = {"text": text, "author": author, "theme": theme}
-    quotes.append(new_quote)
+    if not year.isdigit() or not (1888 <= int(year) <= 2023):  # Проверка года
+        messagebox.showwarning("Ошибка", "Год должен быть числом от 1888 до 2023.")
+        return
+
+    try:
+        rating = float(rating)
+        if rating < 0 or rating > 10:  # Проверка рейтинга
+            raise ValueError
+    except ValueError:
+        messagebox.showwarning("Ошибка", "Рейтинг должен быть числом от 0 до 10.")
+        return
+
+    movie = {"title": title, "genre": genre, "year": int(year), "rating": rating}
+    movies.append(movie)
+    clear_entries()
+    update_movie_list()
+
+# Функция для очистки полей ввода
+def clear_entries():
+    title_entry.delete(0, tk.END)
+    genre_entry.delete(0, tk.END)
+    year_entry.delete(0, tk.END)
+    rating_entry.delete(0, tk.END)
+
+# Функция для обновления списка фильмов
+def update_movie_list(filtered_movies=None):
+    movie_list.delete(*movie_list.get_children())
+    current_movies = filtered_movies if filtered_movies is not None else movies
+    for movie in current_movies:
+        movie_list.insert("", "end", values=(movie["title"], movie["genre"], movie["year"], movie["rating"]))
+
+# Функция для фильтрации фильмов
+def filter_movies():
+    genre = genre_filter_entry.get().strip()
+    year = year_filter_entry.get().strip()
+    filtered = movies
+
+    if genre:
+        filtered = [movie for movie in filtered if genre.lower() in movie["genre"].lower()]
+    if year and year.isdigit():
+        filtered = [movie for movie in filtered if movie["year"] == int(year)]
+
+    update_movie_list(filtered)
 
 # Основной код приложения
-history = load_history()
+movies = load_movies()
 
 root = tk.Tk()
-root.title("Генератор случайных цитат")
+root.title("Личная кинотека")
 
-# Кнопка для генерации цитаты
-generate_button = tk.Button(root, text="Сгенерировать цитату", command=generate_quote)
-generate_button.pack(pady=10)
+# Поля ввода для создания и фильтрации фильмов
+tk.Label(root, text="Название").grid(row=0, column=0)
+title_entry = tk.Entry(root)
+title_entry.grid(row=0, column=1)
 
-# Область для отображения текущей цитаты
-quote_display = tk.Label(root, wraplength=400, justify="center", font=("Arial", 14))
-quote_display.pack(pady=10)
+tk.Label(root, text="Жанр").grid(row=1, column=0)
+genre_entry = tk.Entry(root)
+genre_entry.grid(row=1, column=1)
+
+tk.Label(root, text="Год выпуска").grid(row=2, column=0)
+year_entry = tk.Entry(root)
+year_entry.grid(row=2, column=1)
+
+tk.Label(root, text="Рейтинг (0-10)").grid(row=3, column=0)
+rating_entry = tk.Entry(root)
+rating_entry.grid(row=3, column=1)
+
+add_button = tk.Button(root, text="Добавить фильм", command=add_movie)
+add_button.grid(row=4, columnspan=2)
 
 # Поля для фильтрации
-author_entry = tk.Entry(root, width=20)
-author_entry.insert(0, "Автор")
-author_entry.pack(pady=5)
+tk.Label(root, text="Жанр для фильтрации").grid(row=5, column=0)
+genre_filter_entry = tk.Entry(root)
+genre_filter_entry.grid(row=5, column=1)
 
-theme_entry = tk.Entry(root, width=20)
-theme_entry.insert(0, "Тема")
-theme_entry.pack(pady=5)
+tk.Label(root, text="Год для фильтрации").grid(row=6, column=0)
+year_filter_entry = tk.Entry(root)
+year_filter_entry.grid(row=6, column=1)
 
-filter_button = tk.Button(root, text="Фильтровать историю", command=filter_history)
-filter_button.pack(pady=5)
+filter_button = tk.Button(root, text="Фильтровать", command=filter_movies)
+filter_button.grid(row=7, columnspan=2)
 
-# Список истории
-history_list = tk.Listbox(root, width=50)
-history_list.pack(pady=20)
+# Таблица для отображения фильмов
+movie_list = ttk.Treeview(root, columns=("title", "genre", "year", "rating"), show="headings")
+movie_list.heading("title", text="Название")
+movie_list.heading("genre", text="Жанр")
+movie_list.heading("year", text="Год")
+movie_list.heading("rating", text="Рейтинг")
+movie_list.grid(row=8, columnspan=2)
 
-# Загрузка истории при запуске
-update_history_list()
+# Загрузка фильмов при запуске
+update_movie_list()
 
-# Сохранение истории при закрытии
+# Сохранение данных при закрытии
 def on_closing():
-    save_history()
+    save_movies()
     root.destroy()
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
